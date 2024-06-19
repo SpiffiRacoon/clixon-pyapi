@@ -1,5 +1,7 @@
 import os
 from typing import Optional
+from ncclient import manager
+from lxml import etree
 
 from clixon.args import get_arg, get_logger
 from clixon.netconf import (
@@ -39,6 +41,7 @@ class Clixon:
         read_only: Optional[bool] = False,
         user: Optional[str] = "root",
         standalone: Optional[bool] = False,
+        ncclient: Optional[bool] = False,
     ) -> None:
         """
         Create a Clixon object.
@@ -61,6 +64,8 @@ class Clixon:
         :type user: str
         :return: None
         :rtype: None
+        :param ncclient: connect to backend using ncclient
+        :type ncclient: bool
         """
 
         if sockpath == "":
@@ -81,6 +86,7 @@ class Clixon:
         self.__read_only = read_only
         self.__transaction_notify = False
         self.__standalone = standalone
+        self.__ncclient = ncclient
 
         if cron:
             self.__commit = True
@@ -172,15 +178,28 @@ class Clixon:
         """
         logger.debug("Updating root object")
 
-        config = rpc_config_get(user=self.__user, source=self.__source)
+        if self.__ncclient == True:
+            rpc_get_config = manager.connect_UnixSocket(default_sockpath)
+            
+            data = rpc_get_config.get_config(source = self.__source)
 
-        send(self.__socket, config, pp)
-        data = read(self.__socket, pp)
+            print(data.data_xml)
 
-        self.__handle_errors(data)
-        self.__root = parse_string(data).rpc_reply.data
+            self.__root = data.data_ele
+            
+            rpc_get_config.close_session()
+            
+            return self.__root
+        else:
+            config = rpc_config_get(user=self.__user, source=self.__source)
 
-        return self.__root
+            send(self.__socket, config, pp)
+            data = read(self.__socket, pp)
+
+            self.__handle_errors(data)
+            self.__root = parse_string(data).rpc_reply.data
+
+            return self.__root
 
     @timeout(30)
     def __wait_for_notification(self) -> None:
