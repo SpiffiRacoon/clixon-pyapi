@@ -11,7 +11,7 @@ https://github.com/clicon/clixon/issues/530
 ncclient fork currently awaiting review:
 https://github.com/ncclient/ncclient/pull/591
 
-You can used the forked repo to test functinality just remember to edit in 
+You can use the forked repo to test functionality, just remember to edit in 
 session.__init__(), base = 10 to base = 11 in order to work with tweaked version 
 of clixon: https://github.com/krihal/clixon.
 '''
