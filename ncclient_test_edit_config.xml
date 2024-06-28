@@ -1,0 +1,14 @@
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+    <devices xmlns="http://clicon.org/controller">
+        <device>
+            <name>router2</name>
+            <config>
+                <system xmlns="http://openconfig.net/yang/system">
+                    <config>
+                        <name>router3</name>
+                    </config>
+                </system>
+            </config>
+        </device>
+    </devices>
+</config>

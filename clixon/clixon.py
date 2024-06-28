@@ -1,3 +1,21 @@
+'''
+This file has been edited with some ncclient example additions.
+Currently only get_root works properly using both a tweaked version of 
+ncclient with support for unix sockets aswell as a edited version of clixon
+so the backend responds properly with message-id.
+
+Check issues for more information:
+https://github.com/clicon/clixon/issues/532
+https://github.com/clicon/clixon/issues/530
+
+ncclient fork currently awaiting review:
+https://github.com/ncclient/ncclient/pull/591
+
+You can used the forked repo to test functinality just remember to edit in 
+session.__init__(), base = 10 to base = 11 in order to work with tweaked version 
+of clixon: https://github.com/krihal/clixon.
+'''
+
 import os
 from typing import Optional
 from ncclient import manager
@@ -79,6 +97,13 @@ class Clixon:
         self.__pull = pull
         self.__push = push
         self.__root = None
+        # define socket for now as, backup might wanna replace this with once all commands work with ncclient:
+        '''
+        if ncclient == True:
+            self.__socket = manager.connect_UnixSocket(sockpath)
+        else:
+            self.__socket = create_socket(sockpath)
+        '''
         self.__socket = create_socket(sockpath)
         self.__source = source
         self.__target = target
@@ -87,6 +112,7 @@ class Clixon:
         self.__transaction_notify = False
         self.__standalone = standalone
         self.__ncclient = ncclient
+        self.__nc_socket = manager.connect_UnixSocket(sockpath)
 
         if cron:
             self.__commit = True
@@ -122,9 +148,16 @@ class Clixon:
         """
         if self.__read_only:
             logger.info("Read only mode enabled")
+            if self.__ncclient == True:
+                self.__nc_socket.close_session()
             return
-
+        
         try:
+            if self.__ncclient == True:
+                # commit doesn't work at the moment :(.
+                #self.__nc_socket.commit()
+                self.__nc_socket.close_session()
+                return
             if self.__root is None:
                 self.__root = self.get_root()
 
@@ -157,7 +190,11 @@ class Clixon:
         if self.__read_only:
             logger.info("Read only mode enabled")
             return
-
+        
+        if self.__ncclient == True:
+            self.__nc_socket.commit()
+            return
+        
         commit = rpc_commit()
 
         send(self.__socket, commit, pp)
@@ -178,16 +215,14 @@ class Clixon:
         """
         logger.debug("Updating root object")
 
+        # Only proper working part for now with ncclient.
         if self.__ncclient == True:
-            rpc_get_config = manager.connect_UnixSocket(default_sockpath)
             
-            data = rpc_get_config.get_config(source = self.__source)
+            data = self.__nc_socket.get_config(source = self.__source)
 
             print(data.data_xml)
 
             self.__root = data.data_ele
-            
-            rpc_get_config.close_session()
             
             return self.__root
         else:
@@ -341,6 +376,13 @@ class Clixon:
         if self.__read_only:
             logger.info("Read only mode enabled")
             return
+        
+        # Not finished ncclient integration, finish when clixon-backen works with edit_config + commit
+        '''
+        if self.__ncclient == True:
+            self.__nc_socket.edit_config(config)
+            return
+        '''
 
         config = rpc_config_set(root, device=False, target=self.__target)
 
